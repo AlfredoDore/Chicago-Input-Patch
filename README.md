@@ -35,17 +35,21 @@ This bypasses the classic bug where games only check joystick IDs 0 or 1.
 2. Copy `winmm.dll` into the game folder
 3. Launch the game normally
 
-Example:
-DOOM95
 ## Compatibility
 
 Designed for games using the legacy WinMM joystick interface.
 
 Examples:
 
-- DOOM 95
-- early DirectX 1 titles
-- many Windows 95 era games
+- Doom95
+
+- MechWarrior 2
+
+- Moto Racer
+
+- Interstate 76
+
+- many more games
 
 ---
 
@@ -56,5 +60,6 @@ Open source. Contributions and improvements are welcome.
 ---
 
 ## Project Goal
+
 
 This project aims to preserve compatibility between modern USB controllers and legacy Windows games originally designed for analog gameport hardware.
