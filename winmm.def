@@ -1,18 +1,17 @@
 LIBRARY winmm
 
 EXPORTS
-joyGetPosEx
-joyGetDevCapsA
 joyGetNumDevs
-
-timeGetTime=winmm.timeGetTime
-timeBeginPeriod=winmm.timeBeginPeriod
-timeEndPeriod=winmm.timeEndPeriod
-
-mciSendStringA=winmm.mciSendStringA
-PlaySoundA=winmm.PlaySoundA
-sndPlaySoundA=winmm.sndPlaySoundA
-
-waveOutOpen=winmm.waveOutOpen
-waveOutClose=winmm.waveOutClose
-waveOutWrite=winmm.waveOutWrite
+joyGetDevCapsA
+joyGetDevCapsW
+joyGetPos
+joyGetPosEx
+joyGetThreshold
+joySetThreshold
+joySetCapture
+joyReleaseCapture
+joyConfigChanged
+timeGetTime
+timeBeginPeriod
+timeEndPeriod
+timeGetDevCaps
