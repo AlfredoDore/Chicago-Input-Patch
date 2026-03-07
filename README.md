@@ -52,6 +52,10 @@ Examples:
 - many more games
 
 ---
+Troubleshooting Doom 95 Crash
+- Rename the original Windows winmm.dll (System32) to `winmm_real.dll` and copy it to the game folder.
+
+- If it still fails, use Process Monitor (ProcMon) filtering for doom95.exe → look for "NAME NOT FOUND" in GetProcAddress for winmm.dll. Tell me which function to adjust.
 
 ## License
 
@@ -63,3 +67,4 @@ Open source. Contributions and improvements are welcome.
 
 
 This project aims to preserve compatibility between modern USB controllers and legacy Windows games originally designed for analog gameport hardware.
+
