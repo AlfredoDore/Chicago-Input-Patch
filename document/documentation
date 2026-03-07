@@ -1,0 +1,56 @@
+Documentation: Gameport Functioning in Windows
+This document explains how the gameport (game port) works in the Windows ecosystem, focusing on the historical and technical context of Windows 95 and early versions of DirectX. Based on analysis of INF files from sound drivers (such as those provided in Windows 95/DirectX), it discusses how the gameport interacts with drivers, APIs, and hardware, including its involvement with MIDI. The goal is to provide an educational overview to understand the legacy of input in older games, without practical implementation or modification instructions.
+
+What is Gameport?
+The gameport is an analog hardware interface designed to connect joysticks, gamepads, and other input devices to compatible IBM PC computers. Introduced in the 1980s as an optional expansion card (Game Control Adapter in the original IBM PC), it became a standard integrated into sound cards in the 1990s. The connector is of the DA-15 type (15 pins), similar to a VGA connector, but used exclusively for simple analog and digital input.
+
+Technical Operating Principles
+
+Analog-Based Resistance: Unlike modern digital interfaces such as USB, the gameport operates analogically. Connected joysticks use potentiometers (variable resistors) to represent positions on the axes (usually X and Y, with support for up to 4 axes for two joysticks). The resistance typically varies from 0 to 100 kΩ, corresponding to minimum and maximum positions.
+
+Polling Process: The system does not have dedicated interrupts; instead, the driver or software "polls" (repeatedly queries) the hardware. The process involves:
+Sending a signal to reset an internal capacitor.
+Measuring the capacitor discharge time through the joystick's resistance (using a PC timer).
+Converting the time into a position value (e.g., 0-65535 in Windows APIs). Short time = low position; long time = high position.
+
+Limitations:
+Imprecise and susceptible to electrical noise (causing "drift" or unwanted deviations).
+Supports up to 4 digital buttons (on/off) and 4 analog axes.
+No automatic connection detection — the software assumes presence and requires manual calibration.
+Polling consumes CPU, with typical delays of 50-100 ms, limiting responsiveness in games.
+
+In hardware, the default IO address is 0x201 (configurable via jumpers or software, as seen in INF files of cards like Sound Blaster or ESS).
+Gameport in Windows (Focus on Windows 95)
+In Windows 95, the gameport was standardized as part of the multimedia subsystem, integrating with sound drivers and APIs to facilitate game development. This marked the transition from direct hardware access (common in DOS) to user-mode abstractions.
+
+Kernel Drivers and Components
+
+vjoyd.vxd (Virtual Joystick Driver): Kernel-mode (VxD) driver responsible for hardware polling. Part of early DirectX (e.g., DirectX 2, mentioned in INF files). It manages gameport reading and passes data to high-level APIs. Typical configurations include:
+
+IO: 0x200-0x207 (base address).
+
+No dedicated DMA (unlike audio), but sharing IRQ with the sound card (e.g., IRQ 5 or 7).
+
+Examples of INF configurations: For cards like Creative Sound Blaster 16 (*PNPB003), IO=0x220-0x22F, IRQ=5, DMA=1 (shared with wave/midi).
+
+msjstick.drv: User-mode driver for specific joysticks (e.g., gameport joystick). Integrates with the Control Panel (joy.cpl) for calibration and testing of axes/buttons.
+Integration with Sound Cards: The gameport was often embedded in sound cards (e.g., Sound Blaster, ESS, Aztech, Media Vision), as games combined input with audio. INF files configure the gameport along with wave, midi, and mixer (e.g., [SB16.LC1] defines IO=0x220, IRQ=5 for gameport + audio).
+
+APIs in Windows (winmm.dll)
+Windows abstracts the hardware via multimedia APIs in winmm.dll, allowing games to query joysticks without accessing IO directly:
+
+Main Functions:
+joyGetNumDevs: Returns the number of joysticks detected (typically 1-2 via gameport).
+
+joyGetDevCapsA/W: Gets capabilities (axes, buttons, driver name).
+joyGetPos/Ex: Reads current position (polling via vjoyd.vxd).
+joyGetThreshold/SetThreshold: Sets thresholds for motion detection (useful for drift).
+joySetCapture/ReleaseCapture: Configures periodic capture (timer-based polling).
+joyConfigChanged: Notifies of configuration changes (e.g., joystick connected).
+
+These APIs depend on the chain: app → winmm.dll → vjoyd.vxd → hardware. In games like Doom 95 (a Win95 showcase), there are rigorous checks on these functions at startup to ensure multimedia compatibility.
+
+DirectX Integration
+DirectX (from version 2 onwards, as in the provided INF) extends gameport support to 3D and multimedia games:
+
+DirectInput: Although introduced in DirectX 3, early versions (DirectX 2) rely on the legacy joystick via winmm and vjoyd.vxd. The INF file configures gameport on sound cards for DirectX compatibility (e.g., [ESS1681_Device] sets IO=0x220, IRQ=5 for
