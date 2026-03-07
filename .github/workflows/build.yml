@@ -1,26 +1,52 @@
-name: Build Chicago Input Patch
+name: Build Chicago Input Patch (winmm.dll)
 
 on:
   push:
-  workflow_dispatch:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:   # permite rodar manualmente no Actions
 
 jobs:
-  build:
+  build-x86:
     runs-on: windows-latest
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Setup MSVC
+    - name: Setup MSVC (x86 / Win32)
       uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x86          # ← isso é crítico para 32-bit
 
-    - name: Compile DLL
+    - name: Compile and link winmm.dll
       run: |
-        cl /LD winmm_proxy.cpp /link /DEF:winmm.def /OUT:winmm.dll
+        cl.exe /nologo /c /O2 /DNDEBUG /EHsc- /GR- ^
+          winmm_proxy.cpp ^
+          /Fo"winmm_proxy.obj"
 
-    - name: Upload artifact
+        link.exe /nologo /DLL /MACHINE:X86 /DEF:winmm.def ^
+          winmm_proxy.obj ^
+          /OUT:winmm.dll ^
+          winmm.lib user32.lib gdi32.lib ole32.lib dxguid.lib ^
+          /OPT:REF /OPT:ICF /PDB:winmm.pdb
+      shell: cmd
+
+    - name: Upload winmm.dll artifact
+      if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: chicago-input-patch
+        name: winmm-dll-x86
         path: winmm.dll
+        if-no-files-found: warn
+
+    - name: Show debug info if failed
+      if: failure()
+      run: |
+        echo Files in current dir:
+        dir
+        echo.
+        echo cl version:
+        cl || echo cl not found
+      shell: cmd
