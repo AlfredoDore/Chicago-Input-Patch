@@ -1,0 +1,31 @@
+# Chicago Input Patch
+
+Experimental WinMM proxy DLL to enable modern USB controllers in Windows 95 / early DirectX era games.
+
+### Why this project exists
+Many games from 1995–1999 (Doom 95, Resident Evil, Soul Reaver, etc.) rely on legacy WinMM joystick APIs (`joyGetNumDevs`, `joyGetDevCaps`, `joyGetPosEx`).  
+On modern Windows, the physical gameport and `vjoyd.vxd` driver no longer exist → games crash or see 0 devices.  
+This proxy intercepts those calls, fakes a classic gameport, and allows USB input redirection.
+
+### Features
+- Fake joystick (returns 1 device + plausible caps) to pass strict checks in Doom 95
+- Forwarding of all non-intercepted WinMM functions to `winmm_real.dll`
+- Safe fallbacks for timer functions (`timeGetTime`, etc.)
+- Ready for future USB redirection (XInput/DirectInput planned)
+
+### Requirements
+- Windows (tested on 10/11)
+- MinGW-w64 (g++) for compilation
+- Original `winmm.dll` renamed to `winmm_real.dll`
+
+### Installation / Testing
+1. Rename `C:\Windows\System32\winmm.dll` to `winmm_real.dll` and copy to game folder.
+2. Copy compiled `winmm.dll` to game folder.
+3. Run the game executable.
+
+### Building
+Use the GitHub Actions workflow (`.github/workflows/build.yml`) — it compiles automatically on push.  
+Or locally:
+
+```bash
+g++ -shared -o winmm.dll winmm_proxy.cpp winmm.def -lwinmm -Wl,--subsystem,windows -s -Os
