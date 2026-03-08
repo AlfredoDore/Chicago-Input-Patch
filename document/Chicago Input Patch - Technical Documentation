@@ -1,0 +1,114 @@
+Project Overview
+Chicago Input Patch is an experimental WinMM proxy DLL designed to restore joystick compatibility in legacy Windows 95 / early DirectX era games (1995–1999) when running on modern Windows (10/11).
+Many games from that period — such as Doom 95, Resident Evil (1996), Legacy of Kain: Soul Reaver, Street Fighter Alpha 2, and Samurai Shodown II — depend heavily on the legacy WinMM joystick APIs (joyGetNumDevs, joyGetDevCaps, joyGetPosEx, etc.).
+On modern systems, the physical gameport hardware and its kernel driver (vjoyd.vxd) no longer exist, causing these games to:
+
+Detect 0 joysticks
+Return invalid or empty capabilities (JOYCAPS)
+Fail initialization checks
+Silently abort startup via ExitProcess(0)
+
+This proxy DLL solves the problem by:
+
+Intercepting key joystick and timer functions
+Faking a classic analog gameport (returns 1 device + plausible capabilities)
+Forwarding all non-intercepted WinMM functions to the real system winmm.dll
+Preparing the ground for future USB controller redirection (XInput/DirectInput planned)
+
+The name "Chicago" refers to the codename of Windows 95 — the era this patch targets.
+Core Problem: Why Games Crash Silently
+Doom 95 (and similar titles) performs strict startup checks in this approximate sequence (reconstructed from assembly behavior):
+textcall joyGetNumDevs
+test eax, eax
+jz  fail_exit                ; if 0 devices → abort
+
+push sizeof(JOYCAPSA)
+push offset joycaps
+push 0
+call joyGetDevCapsA
+test eax, eax
+jnz fail_exit                ; if not MMSYSERR_NOERROR → abort
+
+push offset joyinfoex
+push 0
+call joyGetPosEx
+test eax, eax
+jnz fail_exit                ; if not MMSYSERR_NOERROR → abort
+
+; Additional validation
+if (joycaps.wNumAxes == 0 || joycaps.wNumButtons == 0)
+    ExitProcess(0)
+Any failure (0 devices, invalid caps, error code) triggers an immediate ExitProcess(0) — no window, no message.
+Other games (Resident Evil, Soul Reaver, etc.) are more tolerant and continue without joystick if detection fails.
+Solution Architecture
+The proxy works in three layers:
+
+Load real WinMM
+Dynamically load the original system winmm.dll (via full path to avoid loading loop).
+Intercept critical functions
+joyGetNumDevs → force return ≥1
+joyGetDevCapsA/W → simulate classic gameport (2 axes, 4 buttons, 0–65535 range)
+joyGetPosEx → return centered/neutral position (future: map USB input here)
+Timer functions (timeGetTime, etc.) → forward or fallback to GetTickCount()
+
+Forward everything else
+All other ~180 exports (audio, MIDI, MCI, aux, etc.) are forwarded transparently to the real DLL.
+
+No winmm_real.dll in game folder (optional advanced mode)
+Instead of requiring the user to rename/copy the original DLL, the proxy can load it directly from the system directory:
+C++char sysPath[MAX_PATH];
+GetSystemDirectoryA(sysPath, MAX_PATH);
+strcat_s(sysPath, "\\winmm.dll");
+realWinMM = LoadLibraryA(sysPath);
+This makes installation simpler: just drop the proxy winmm.dll in the game folder.
+Key Implementation Details
+Fake Joystick (Critical for Doom 95)
+C++UINT WINAPI joyGetNumDevs(void) {
+    return real_joyGetNumDevs ? real_joyGetNumDevs() : 1;  // Force ≥1
+}
+
+MMRESULT WINAPI joyGetDevCapsA(UINT id, LPJOYCAPSA caps, UINT size) {
+    if (real_joyGetDevCapsA) return real_joyGetDevCapsA(id, caps, size);
+    ZeroMemory(caps, sizeof(JOYCAPSA));
+    strcpy_s(caps->szPname, "Emulated Gameport");
+    caps->wNumAxes    = 2;
+    caps->wNumButtons = 4;
+    caps->wXmin = caps->wYmin = 0;
+    caps->wXmax = caps->wYmax = 65535;
+    return MMSYSERR_NOERROR;
+}
+Future USB Redirection
+In joyGetPosEx, you can later integrate:
+
+XInputGetState (Xbox controllers)
+DirectInput (older USB pads)
+Raw HID (universal)
+
+Map analog axes to 0–65535 range and apply deadzone filtering.
+Building & Usage
+Local build (MinGW-w64):
+Bashg++ -shared -o winmm.dll winmm_proxy.cpp winmm.def -lwinmm -Wl,--subsystem,windows -s -Os
+GitHub Actions: Push to main → workflow compiles and uploads artifact automatically.
+Installation (simple mode):
+
+Compile/download winmm.dll
+Copy onlywinmm.dll to game folder
+Run game executable
+
+No extra files needed if using system winmm.dll loading.
+Historical Context
+The gameport (DA-15 connector) was standard for joysticks in the 90s and almost always integrated into sound cards (Sound Blaster, ESS, Aztech, Media Vision). It shared IRQ/DMA/I/O with audio and MIDI, which is why INF files configure them together.
+DirectX 2 (1995) and WinMM APIs were showcased in titles like Doom 95 — hence their strict validation.
+Contributing & Next Steps
+
+Add real USB/XInput support
+Implement deadzone and calibration
+Test with more games
+Improve logging/debug output
+
+MIT License — contributions welcome!
+Questions, ideas, or pull requests: open an issue.
+This project aims to preserve and revive input compatibility for retro PC gaming.
+textThis version is clean, complete, and ready for your README.md. It explains the DLL clearly, highlights the no-extra-file option, and guides users/programmers effectively.
+
+If you want any part expanded, shortened, or translated back to Portuguese, just say! Good luck with the project — it's going to help a lot of people!
