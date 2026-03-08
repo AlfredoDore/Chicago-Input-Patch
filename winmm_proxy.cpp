@@ -1,5 +1,13 @@
 #include <windows.h>
 #include <mmsystem.h>
+#include <stdio.h>
+
+static void debug_log(const char* msg)
+{
+    OutputDebugStringA(msg);
+}
+#include <windows.h>
+#include <mmsystem.h>
 #include <cstring>
 
 typedef MMRESULT (WINAPI *JOYGETPOSEX_PROC)(UINT, LPJOYINFOEX);
@@ -108,4 +116,5 @@ BOOL WINAPI DllMain(HINSTANCE inst,DWORD reason,LPVOID) {
     }
 
     return TRUE;
+
 }
