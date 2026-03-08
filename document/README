@@ -2,30 +2,42 @@
 
 Experimental WinMM proxy DLL to enable modern USB controllers in Windows 95 / early DirectX era games.
 
-### Why this project exists
-Many games from 1995–1999 (Doom 95, Resident Evil, Soul Reaver, etc.) rely on legacy WinMM joystick APIs (`joyGetNumDevs`, `joyGetDevCaps`, `joyGetPosEx`).  
-On modern Windows, the physical gameport and `vjoyd.vxd` driver no longer exist → games crash or see 0 devices.  
-This proxy intercepts those calls, fakes a classic gameport, and allows USB input redirection.
+## Why this project exists
 
-### Features
-- Fake joystick (returns 1 device + plausible caps) to pass strict checks in Doom 95
-- Forwarding of all non-intercepted WinMM functions to `winmm_real.dll`
-- Safe fallbacks for timer functions (`timeGetTime`, etc.)
-- Ready for future USB redirection (XInput/DirectInput planned)
+Many games from 1995–1999 (Doom 95, Resident Evil, Legacy of Kain: Soul Reaver, Street Fighter Alpha 2, etc.) rely on legacy WinMM joystick APIs (`joyGetNumDevs`, `joyGetDevCaps`, `joyGetPosEx`, etc.).
 
-### Requirements
-- Windows (tested on 10/11)
-- MinGW-w64 (g++) for compilation
-- Original `winmm.dll` renamed to `winmm_real.dll`
+On modern Windows (10/11), the physical gameport hardware and `vjoyd.vxd` driver no longer exist, so games see 0 devices or invalid caps and crash/abort silently during startup.
 
-### Installation / Testing
-1. Rename `C:\Windows\System32\winmm.dll` to `winmm_real.dll` and copy to game folder.
-2. Copy compiled `winmm.dll` to game folder.
+This proxy DLL:
+- Intercepts joystick calls.
+- Fakes a classic gameport (returns 1 device + plausible capabilities).
+- Allows future redirection from USB controllers (XInput or DirectInput planned).
+- Forwards all other WinMM functions transparently.
+
+## Features
+- Fake joystick detection (returns ≥1 device) to pass strict checks in Doom 95 and similar games.
+- Safe fallbacks for `joyGetDevCaps`, `joyGetPosEx` (simulates 2 axes, 4 buttons, centered position).
+- Full forwarding of non-intercepted functions (no need to list 180+ exports manually).
+- Optional: Load real `winmm.dll` from system directory (no need to copy/rename in game folder).
+
+## Requirements
+- Windows 10 or 11 (tested on 64-bit)
+- MinGW-w64 (with g++) for local compilation
+- Game executables from 1995–1999 era
+
+## Installation / Testing (Recommended Simple Way)
+1. Compile or download the latest `winmm.dll` from GitHub Actions (Artifacts tab).
+2. Copy **only** the compiled `winmm.dll` to the game folder (next to the .exe).
+   - No need to rename or copy the original `winmm.dll` — the proxy loads it automatically from system directory.
 3. Run the game executable.
 
-### Building
-Use the GitHub Actions workflow (`.github/workflows/build.yml`) — it compiles automatically on push.  
-Or locally:
+If the game still crashes (e.g., memory access violation), try compatibility mode:
+- Right-click exe → Properties → Compatibility → Run in Windows 95 mode + Reduced color (16-bit).
+
+For best results with picky games: use a wrapper like **DxWnd** or **dgVoodoo2** (optional but recommended).
+
+## Building Locally
+Install MinGW-w64 and run in the project root:
 
 ```bash
 g++ -shared -o winmm.dll winmm_proxy.cpp winmm.def -lwinmm -Wl,--subsystem,windows -s -Os
