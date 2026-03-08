@@ -1,0 +1,81 @@
+# Chicago Input Patch - Technical Documentation
+
+## Project Goal and Background
+
+**Chicago Input Patch** is a user-mode proxy DLL that replaces `winmm.dll` to restore joystick compatibility in legacy Windows 95 / early DirectX games (1995–1999) when running on modern Windows 10/11.
+
+Many titles from that era — notably **Doom 95**, **Resident Evil (1996)**, **Legacy of Kain: Soul Reaver**, **Street Fighter Alpha 2**, and **Samurai Shodown II** — depend on the legacy WinMM joystick APIs:
+
+- `joyGetNumDevs`
+- `joyGetDevCapsA` / `joyGetDevCapsW`
+- `joyGetPosEx`
+- `joyGetThreshold` / `joySetThreshold`
+- `joySetCapture` / `joyReleaseCapture`
+- `joyConfigChanged`
+- Timer functions: `timeGetTime`, `timeBeginPeriod`, `timeEndPeriod`, `timeGetDevCaps`
+
+On modern systems, the physical **gameport** (DA-15 analog joystick port) and its kernel driver (`vjoyd.vxd`) no longer exist. As a result:
+
+- `joyGetNumDevs` returns 0 → games abort silently.
+- `joyGetDevCaps` returns invalid or empty capabilities (wNumAxes = 0, wNumButtons = 0).
+- The game fails initialization and calls `ExitProcess(0)` before creating the main window.
+
+Doom 95 is particularly strict: it performs sequential checks and aborts on any failure (reconstructed pseudo-assembly):
+call joyGetNumDevs
+test eax, eax
+jz  fail_exit           ; 0 devices → abort
+call joyGetDevCapsA
+test eax, eax
+jnz fail_exit           ; not MMSYSERR_NOERROR → abort
+call joyGetPosEx
+test eax, eax
+jnz fail_exit           ; error → abort
+if (joycaps.wNumAxes == 0 || joycaps.wNumButtons == 0)
+ExitProcess(0)
+textOther games are more tolerant and continue without joystick input.
+
+## Current Proxy Design
+
+The proxy:
+- Loads the real system `winmm.dll` dynamically (from `C:\Windows\System32` or `SysWOW64`) — **no need to rename or copy** `winmm_real.dll` to the game folder.
+- Intercepts only joystick and timer functions.
+- Fakes responses to pass checks:
+  - `joyGetNumDevs` → returns at least 1
+  - `joyGetDevCaps` → simulates classic gameport (2 axes, 4 buttons, 0–65535 range)
+  - `joyGetPosEx` → returns centered/neutral position
+- Forwards all other ~180 exports transparently.
+
+This design avoids manual renaming and makes installation as simple as dropping one DLL.
+
+## Known Issues & Current Status (March 08, 2026)
+- Doom 95 still crashes silently or with access violation (memory read error at invalid address, e.g., 0x0000 or 0xFFFE).
+- Crash occurs **before** WinMM calls are reached — likely due to DirectDraw/GDI initialization incompatibility in Windows 10/11.
+- Proxy itself loads correctly, but the game aborts earlier in its own code.
+
+Common in Doom 95 on modern Windows (reported in Doomworld, VOGONS, and Stack Overflow threads since 2010s).
+
+## Recommended Workarounds
+1. Use a DirectX/Graphics wrapper (highly recommended):
+   - **DxWnd**: https://sourceforge.net/projects/dxwnd/  
+     Hook WinMM + emulate DirectDraw + fake joystick.
+   - **dgVoodoo2**: http://dege.freeweb.hu/dgVoodoo2/  
+     Excellent for Win95 DirectX games — place DLLs in game folder.
+
+2. Compatibility settings on the exe:
+   - Right-click doom95.exe → Properties → Compatibility
+   - Run in compatibility mode: Windows 95
+   - Reduced color mode: 16-bit
+   - Run as administrator
+
+3. Test in a real Windows 95 VM (VirtualBox/VMware) with gameport emulation — the proxy should work perfectly there.
+
+## Future Directions & Open Questions for Contributors
+- Integrate XInput/DirectInput for real USB controller mapping in `joyGetPosEx`.
+- Add deadzone, sensitivity, and calibration.
+- Implement logging (OutputDebugString or file) to trace calls.
+- Handle ordinal imports explicitly if needed (rare, but possible in some builds).
+- Test with more games and collect crash logs (ProcMon + DebugView).
+
+If you're a programmer reading this: any advice on handling memory access violations in Win95 exes on Win10/11, or better ways to load system DLLs safely, would be very welcome.
+
+MIT License — feel free to fork, modify, and contribute.
