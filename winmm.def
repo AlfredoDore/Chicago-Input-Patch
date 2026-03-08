@@ -1,17 +1,16 @@
 LIBRARY winmm
-
 EXPORTS
-joyGetNumDevs
-joyGetDevCapsA
-joyGetDevCapsW
-joyGetPos
-joyGetPosEx
-joyGetThreshold
-joySetThreshold
-joySetCapture
-joyReleaseCapture
-joyConfigChanged
-timeGetTime
-timeBeginPeriod
-timeEndPeriod
-timeGetDevCaps
+    joyGetNumDevs
+    joyGetDevCapsA
+    joyGetDevCapsW
+    joyGetPos
+    joyGetPosEx
+    joyGetThreshold
+    joySetThreshold
+    joySetCapture
+    joyReleaseCapture
+    joyConfigChanged
+    timeGetTime
+    timeBeginPeriod
+    timeEndPeriod
+    timeGetDevCaps
