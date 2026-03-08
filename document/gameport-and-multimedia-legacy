@@ -1,0 +1,159 @@
+# Documentation: The Gameport and Multimedia Legacy in Windows 95
+
+## 1. Overview of the Gameport in Windows 95
+
+The **gameport** (joystick port) was the standard analog input interface for PC games in the 1990s. It used a DA-15 connector and was almost always integrated into **sound cards** (Sound Blaster, ESS AudioDrive, Aztech, Media Vision, etc.) rather than being a separate card.
+
+### Why Built into Sound Cards?
+- Shared hardware resources (IRQ, DMA, I/O ports) — saved ISA slots.
+- Unified driver stack for audio + joystick + MIDI.
+- Most games needed sound and input together.
+- Cost-effective for manufacturers (Creative, ESS, Aztech).
+
+### Technical Operation
+- **Analog resistance polling**: Joystick potentiometers varied resistance (0–100 kΩ) → driver measured capacitor discharge time → converted to axis position (0–65535 in WinMM).
+- **I/O address**: Usually 0x201 (configurable).
+- **No interrupts**: Pure polling (CPU-intensive).
+- **MIDI support**: Pins 12/15 could be used for MPU-401 MIDI adapters on many cards.
+- **Driver chain**:
+  - `vjoyd.vxd` (kernel joystick driver)
+  - `msjstick.drv` (user-mode support)
+  - `winmm.dll` APIs: `joyGetNumDevs`, `joyGetDevCaps`, `joyGetPosEx`, etc.
+
+### DirectX and WinMM Integration
+DirectX 2 (1995–1996) included gameport support via:
+- DirectPlay (multiplayer via modem/serial/IPX)
+- Legacy WinMM calls for joystick
+- INF files configured gameport alongside wave/midi/mixer
+
+Games like Doom 95 were extremely strict: they aborted startup if:
+- `joyGetNumDevs` returned 0
+- `joyGetDevCaps` returned invalid caps (wNumAxes = 0 or wNumButtons = 0)
+- `joyGetPosEx` returned error
+
+This legacy explains why modern proxies must fake a joystick (return 1 device + plausible JOYCAPS) to run these titles.
+
+## 2. Original INF File Excerpt (Windows 95 Multimedia Drivers)
+
+Below is the full INF content you provided, cleaned and formatted for readability. It configures sound cards, gameport, MIDI, and DirectX components.
+
+```inf
+[Version]
+Signature="$$   CHICAGO   $$"
+Class=MEDIA
+Provider=%MSFT%
+VerInfo=4.02.0.0095
+
+[DriverSelect]
+|*CTL0001| "Stop"=isna.dll
+|*AZT2316| "Stop"=isna.dll
+|*PNPB007| "Stop"=isna.dll
+|*PNPB003| "Stop"=isna.dll
+
+[SourceDisksNames]
+222="DirectSound Drivers","",1
+
+[SourceDisksFiles]
+es1488.vxd=222
+es1688.vxd=222
+es488.vxd=222
+es688.vxd=222
+mssblst.vxd=222
+mssndsys.vxd=222
+sb16.vxd=222
+vmvid.vxd=222
+vpasd.vxd=222
+azt16.vxd=222
+cspman.dll=222
+es1488.drv=222
+es1688.drv=222
+es488.drv=222
+es688.drv=222
+essfm.drv=222
+essmport.drv=222
+essmpu.drv=222
+findmvi.dll=222
+mmmixer.dll=222
+msjstick.drv=222
+msmpu401.drv=222
+msopl.drv=222
+mssblst.drv=222
+mssndsys.drv=222
+mvi514mx.drv=222
+mviwave.drv=222
+mvmixer.drv=222
+mvproaud.drv=222
+mvpas.vxd=222
+pa3dmxd.drv=222
+sb16snd.drv=222
+sbfm.drv=222
+vjoyd.vxd=222
+wfm0200.acv=222
+wfm0200a.csp=222
+wfm0201.acv=222
+wfm0201a.csp=222
+wfm0202.acv=222
+wfm0202a.csp=222
+wfm0203.acv=222
+wfm0203a.csp=222
+azt16c.drv=222
+azt16w.drv=222
+sbawe.vxd=222
+sbawe32.drv=222
+synthgm.sbk=222
+
+[ControlFlags]
+ExcludeFromSelect=*PNP0802,
+ExcludeFromSelect=VIRTUAL\WSS-SBEmulation
+ExcludeFromSelect=MF\PNPB00D_Dev0
+ExcludeFromSelect=MF\PNPB00D_Dev1
+ExcludeFromSelect=MF\PNPB00E_Dev1
+ExcludeFromSelect=MF\PNPB00E_Dev2
+ExcludeFromSelect=MF\PNPB019_Dev1
+
+[ClassInstall]
+AddReg=Class.AddReg
+
+[Class.AddReg]
+HKR,,,,%MediaClassName%
+HKR,,Icon,,"-1"
+HKR,,Installer,,mmci.dll
+
+[Manufacturer]
+%MfgName%=Microsoft
+%CPQMfgName%=Compaq
+%MVMfgName%=MediaVision
+%CLMfgName%=CreativeLabs
+%AZTMfgName%=AztechLabs
+%ESSMfgName%=ESS
+%NMCMfgName%=NewMediaCorp
+
+[Microsoft]
+%*PNPB007.DeviceDesc%=PNPB007_Device, *PNPB007
+%*PNPB007NSP.DeviceDesc%=PNPB007_NSP, *PNPB007
+%WSS-SBEmulation.DeviceDesc%=WSS_SB_Device, VIRTUAL\WSS-SBEmulation
+
+; ... (rest of the [Manufacturer] sections as in your file)
+
+[Strings]
+; Non-localized strings
+KEY_WARNVER="SYSTEM\CurrentControlSet\Control\SessionManager\WarnVerDLLs"
+KEY_CHKVER="SYSTEM\CurrentControlSet\Control\SessionManager\CheckVerDLLs"
+KEY_FIL="SYSTEM\CurrentControlSet\Control\MediaResources\FilterList"
+KEY_IOC="SYSTEM\CurrentControlSet\Control\MediaResources\InstallOptionalComponents"
+
+; Localized strings
+MSFT="Microsoft"
+MfgName="Microsoft"
+MVMfgName="Media Vision"
+CLMfgName="Creative Labs"
+CPQMfgName="Compaq"
+AZTMfgName="Aztech Labs"
+ESSMfgName="ESS Technology, Inc."
+NMCMfgName="New Media Corporation"
+NMCWJ.DeviceDesc="New Media .WAVjammer audio adapter"
+*AZT1605.DeviceDesc="Aztech Sound Galaxy Nova 16"
+*AZT2316.DeviceDesc="Aztech Sound Galaxy Washington 16"
+; ... (all other device descriptions)
+MediaClassName="Sound, video and game controllers"
+Joystick.DeviceDesc="Gameport Joystick"
