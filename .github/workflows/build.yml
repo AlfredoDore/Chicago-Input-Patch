@@ -1,0 +1,23 @@
+name: Build DLL
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Compile DLL
+      run: |
+        cl /LD SRC\*.cpp /FeChicagoInputPatch.dll user32.lib dinput8.lib
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: ChicagoInputPatch
+        path: ChicagoInputPatch.dll
